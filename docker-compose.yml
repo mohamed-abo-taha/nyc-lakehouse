@@ -68,7 +68,7 @@ services:
       - "19092:19092"
 
   connect:                     # Debezium (Kafka Connect) for CDC from Postgres
-    image: debezium/connect:2.7
+    image: quay.io/debezium/connect:2.7.3.Final
     profiles: ["stream"]
     depends_on:
       postgres:

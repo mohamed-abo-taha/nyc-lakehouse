@@ -1,0 +1,65 @@
+<svg viewBox="0 0 1000 430" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" fill="#555"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1000" height="430" fill="#ffffff"/>
+
+  <text x="20" y="30" font-size="20" font-weight="700" fill="#111827">NYC Trips Lakehouse — architecture</text>
+  <text x="20" y="52" font-size="12.5" fill="#6b7280">Batch + streaming + CDC into a medallion lakehouse. Orchestrated by Dagster. Streaming + CDC verified in CI (GitHub Actions: Linux + Docker).</text>
+
+  <!-- lane labels -->
+  <text x="20" y="113" font-size="11" font-weight="700" fill="#9ca3af">BATCH</text>
+  <text x="20" y="183" font-size="11" font-weight="700" fill="#9ca3af">STREAM</text>
+  <text x="20" y="253" font-size="11" font-weight="700" fill="#9ca3af">CDC</text>
+  <text x="20" y="339" font-size="11" font-weight="700" fill="#9ca3af">MODEL + SERVE</text>
+
+  <!-- BATCH lane y=86 -->
+  <rect x="150" y="86" width="120" height="46" rx="6" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="210" y="114" font-size="12.5" text-anchor="middle" fill="#111827">NYC TLC Parquet</text>
+  <line x1="270" y1="109" x2="318" y2="109" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="320" y="86" width="110" height="46" rx="6" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="375" y="114" font-size="12.5" text-anchor="middle" fill="#111827">ingest (batch)</text>
+  <line x1="430" y1="109" x2="478" y2="109" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="480" y="86" width="150" height="46" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="555" y="114" font-size="12.5" text-anchor="middle" fill="#111827">MinIO · bronze</text>
+
+  <!-- STREAM lane y=156 -->
+  <rect x="150" y="156" width="120" height="46" rx="6" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="210" y="184" font-size="12.5" text-anchor="middle" fill="#111827">producer</text>
+  <line x1="270" y1="179" x2="318" y2="179" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="320" y="156" width="130" height="46" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="385" y="184" font-size="12.5" text-anchor="middle" fill="#111827">Redpanda (Kafka)</text>
+  <line x1="450" y1="179" x2="498" y2="179" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="500" y="156" width="110" height="46" rx="6" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="555" y="184" font-size="12.5" text-anchor="middle" fill="#111827">consumer</text>
+  <line x1="610" y1="179" x2="658" y2="179" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="660" y="156" width="170" height="46" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="745" y="184" font-size="12.5" text-anchor="middle" fill="#111827">MinIO · bronze/stream</text>
+
+  <!-- CDC lane y=226 -->
+  <rect x="150" y="226" width="130" height="46" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="215" y="254" font-size="12.5" text-anchor="middle" fill="#111827">Postgres OLTP</text>
+  <line x1="280" y1="249" x2="328" y2="249" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="330" y="226" width="150" height="46" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="405" y="254" font-size="12.5" text-anchor="middle" fill="#111827">Debezium (Connect)</text>
+  <line x1="480" y1="249" x2="528" y2="249" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="530" y="226" width="150" height="46" rx="6" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="605" y="254" font-size="12.5" text-anchor="middle" fill="#111827">cdc.* topic</text>
+
+  <!-- MODEL + SERVE y=312 -->
+  <rect x="150" y="312" width="120" height="46" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="210" y="340" font-size="12.5" text-anchor="middle" fill="#111827">MinIO lake</text>
+  <line x1="270" y1="335" x2="318" y2="335" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="320" y="312" width="220" height="46" rx="6" fill="#f3f4f6" stroke="#9ca3af"/>
+  <text x="430" y="336" font-size="12.5" text-anchor="middle" fill="#111827">dbt on DuckDB</text>
+  <text x="430" y="351" font-size="10.5" text-anchor="middle" fill="#6b7280">silver → gold (star schema)</text>
+  <line x1="540" y1="335" x2="588" y2="335" stroke="#555" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="590" y="312" width="210" height="46" rx="6" fill="#fef3c7" stroke="#f59e0b"/>
+  <text x="695" y="340" font-size="12.5" text-anchor="middle" fill="#111827">Dashboard (Streamlit / Metabase)</text>
+
+  <!-- legend -->
+  <rect x="150" y="392" width="16" height="14" rx="3" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="174" y="404" font-size="12" fill="#6b7280">= Docker Compose service (MinIO · Redpanda · Debezium · Postgres)</text>
+</svg>
