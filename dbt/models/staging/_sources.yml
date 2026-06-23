@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw NYC TLC trip Parquet, landed immutably in the MinIO lake."
+    schema: main
+    tables:
+      - name: yellow_trips
+        description: "Yellow taxi trips, read directly from object storage."
+        meta:
+          external_location: "s3://lake/bronze/yellow/*.parquet"
+        # bronze is raw, so freshness is checked here rather than null/unique tests
+        loaded_at_field: tpep_pickup_datetime
+        freshness:
+          warn_after: {count: 9999, period: day}  # historical demo data; warn only

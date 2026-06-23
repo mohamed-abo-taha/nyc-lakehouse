@@ -1,0 +1,30 @@
+name: 'nyc_lakehouse'
+version: '1.0.0'
+profile: 'nyc_lakehouse'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+require-dbt-version: [">=1.7.0", "<2.0.0"]
+
+# trips outside the ingest window are dropped in staging (TLC files contain a few
+# stray timestamps); keep these in sync with TLC_MONTHS in .env
+vars:
+  start_date: '2023-01-01'
+  end_date: '2023-04-01'
+
+models:
+  nyc_lakehouse:
+    staging:
+      +materialized: table
+      +schema: silver
+    marts:
+      +materialized: table
+      +schema: gold
+
+seeds:
+  nyc_lakehouse:
+    +schema: seeds

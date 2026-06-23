@@ -1,0 +1,17 @@
+nyc_lakehouse:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # warehouse file lives under the repo; run dbt from the project root
+      path: "data/warehouse/warehouse.duckdb"
+      threads: 4
+      extensions:
+        - httpfs
+      settings:
+        s3_endpoint: "{{ env_var('S3_ENDPOINT', 'localhost:9000') }}"
+        s3_use_ssl: false
+        s3_url_style: "path"
+        s3_region: "us-east-1"
+        s3_access_key_id: "{{ env_var('MINIO_ROOT_USER', 'minioadmin') }}"
+        s3_secret_access_key: "{{ env_var('MINIO_ROOT_PASSWORD', 'minioadmin') }}"

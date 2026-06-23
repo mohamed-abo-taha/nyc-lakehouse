@@ -1,0 +1,62 @@
+name: nyc-lakehouse
+
+# Default `docker compose up -d` brings up the lake (MinIO) and the warehouse
+# (Postgres). Metabase and Redpanda are behind profiles so the core stays lean:
+#   docker compose --profile bi up -d        # + Metabase BI
+#   docker compose --profile stream up -d    # + Redpanda (Kafka API) for streaming
+
+services:
+  minio:                       # S3-compatible object store = the data lake
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"            # S3 API
+      - "9001:9001"            # web console
+    volumes:
+      - minio_data:/data
+
+  postgres:                    # serving warehouse (gold marts) + future CDC source
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-warehouse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-warehouse}
+      POSTGRES_DB: ${POSTGRES_DB:-warehouse}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-warehouse}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  metabase:                    # BI dashboards on the gold marts (profile: bi)
+    image: metabase/metabase:latest
+    profiles: ["bi"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redpanda:                    # Kafka-compatible broker for streaming (profile: stream)
+    image: redpandadata/redpanda:latest
+    profiles: ["stream"]
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://localhost:9092
+    ports:
+      - "9092:9092"
+
+volumes:
+  minio_data:
+  pg_data:
