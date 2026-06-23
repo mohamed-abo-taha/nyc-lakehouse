@@ -21,3 +21,25 @@ jobs:
           dbt parse --project-dir dbt --profiles-dir dbt
       - name: Unit tests (offline)
         run: pytest -q
+
+  # Runs the real streaming + CDC stack in the cloud (Linux runner + Docker):
+  # Redpanda + Debezium + Postgres + MinIO, then produce/consume and capture CDC.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Start the stack (MinIO + Postgres + Redpanda + Debezium)
+        run: docker compose --profile stream up -d
+      - name: Streaming + CDC integration
+        run: python scripts/smoke_stream_cdc.py
+      - name: Proof - running containers
+        if: always()
+        run: docker compose ps
+      - name: Service logs (on failure)
+        if: failure()
+        run: docker compose logs --tail=120

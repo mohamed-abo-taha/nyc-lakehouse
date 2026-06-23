@@ -1,10 +1,24 @@
-.PHONY: up down seeds ingest dbt test pipeline dagster dashboard bi clean
+.PHONY: up down seeds ingest dbt test pipeline dagster dashboard bi stream produce consume cdc clean
 
 up:                 ## start the lake (MinIO) + warehouse (Postgres)
 	docker compose up -d
 
 bi:                 ## add Metabase
 	docker compose --profile bi up -d
+
+stream:             ## start lake + warehouse + Redpanda + Debezium Connect
+	docker compose --profile stream up -d
+
+produce:            ## stream trips into the `trips` topic
+	python -m streaming.producer
+
+consume:            ## land the stream into bronze/stream in the lake
+	python -m streaming.consumer
+
+cdc:                ## seed OLTP source, register Debezium, run the change demo
+	python -m cdc.setup_source
+	python -m cdc.register_connector
+	python -m cdc.demo
 
 down:
 	docker compose down

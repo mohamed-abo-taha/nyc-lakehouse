@@ -52,6 +52,11 @@ class Settings:
         if m.strip()
     ])
 
+    # streaming (Kafka API via Redpanda) + CDC
+    kafka_bootstrap: str = os.getenv("KAFKA_BOOTSTRAP", "localhost:19092")
+    topic_trips: str = os.getenv("TOPIC_TRIPS", "trips")
+    connect_url: str = os.getenv("CONNECT_URL", "http://localhost:8083")
+
     landing: Path = ROOT / "data" / "landing"
     warehouse_db: Path = ROOT / "data" / "warehouse" / "warehouse.duckdb"
 
