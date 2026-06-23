@@ -40,21 +40,45 @@ def _config() -> dict:
     }
 
 
+def _wait_rest_ready(base: str, attempts: int = 120) -> None:
+    # Connect's REST port accepts connections before it's ready and returns 503
+    # while workers start, so sleep every attempt and accept only 200.
+    for _ in range(attempts):
+        try:
+            if requests.get(f"{base}/connectors", timeout=5).status_code == 200:
+                return
+        except Exception:
+            pass
+        time.sleep(2)
+    raise SystemExit(f"Kafka Connect REST not ready at {base}")
+
+
+def _wait_running(base: str, attempts: int = 60) -> None:
+    for _ in range(attempts):
+        try:
+            st = requests.get(f"{base}/connectors/{NAME}/status", timeout=5).json()
+            conn = st.get("connector", {}).get("state")
+            tasks = [t.get("state") for t in st.get("tasks", [])]
+            if "FAILED" in [conn, *tasks]:
+                raise SystemExit(f"connector FAILED: {st}")
+            if conn == "RUNNING" and tasks and all(t == "RUNNING" for t in tasks):
+                print(f"connector RUNNING (tasks: {tasks})")
+                return
+        except SystemExit:
+            raise
+        except Exception:
+            pass
+        time.sleep(2)
+    print("warning: connector not confirmed RUNNING; proceeding anyway")
+
+
 def register() -> None:
     base = SETTINGS.connect_url
-    for _ in range(60):  # Connect can take a while to come up
-        try:
-            if requests.get(f"{base}/connectors", timeout=3).ok:
-                break
-        except Exception:
-            time.sleep(2)
-    else:
-        raise SystemExit(f"Kafka Connect not reachable at {base}")
-
-    r = requests.put(f"{base}/connectors/{NAME}/config", json=_config(), timeout=20)
+    _wait_rest_ready(base)
+    r = requests.put(f"{base}/connectors/{NAME}/config", json=_config(), timeout=30)
     print(f"register {NAME}: HTTP {r.status_code}")
-    print(r.text[:300])
     r.raise_for_status()
+    _wait_running(base)
 
 
 if __name__ == "__main__":
