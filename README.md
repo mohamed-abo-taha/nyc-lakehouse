@@ -1,7 +1,9 @@
 # NYC Trips Lakehouse
 
+[![ci](https://github.com/mohamed-abo-taha/nyc-lakehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/mohamed-abo-taha/nyc-lakehouse/actions/workflows/ci.yml)
+
 An end-to-end data platform on real, messy data: it ingests NYC TLC trip records
-two ways (batch now, streaming next), lands them in an object-store data lake,
+two ways (batch + streaming), lands them in an object-store data lake,
 models them into a tested star schema with dbt, runs data-quality checks, and
 serves analytics — orchestrated, containerized, and CI-validated.
 
@@ -10,9 +12,11 @@ The whole stack runs locally and free via Docker Compose, but every piece maps
 
 ## Architecture (medallion: bronze -> silver -> gold)
 
+![architecture](docs/architecture.svg)
+
 ```
 NYC TLC Parquet ──ingest──► MinIO (S3)            DuckDB + dbt                Postgres / DuckDB
- (batch; stream next)        bronze (raw) ─────►  silver (clean, typed) ─────► gold (star schema) ──► Metabase / Streamlit
+ (batch + streaming)        bronze (raw) ─────►  silver (clean, typed) ─────► gold (star schema) ──► Metabase / Streamlit
                                                   + dbt tests + DQ audit
                               orchestrated by Dagster · validated in CI · provisioned by Docker Compose
 ```
@@ -25,7 +29,7 @@ NYC TLC Parquet ──ingest──► MinIO (S3)            DuckDB + dbt        
 | Lakehouse engine | **OLAP**, MPP, ACID | **DuckDB** (httpfs over MinIO) | Snowflake, BigQuery (**BQ**), Redshift |
 | Transform / model | **dbt**, **ELT**, Kimball, star schema, **SCD2** | dbt-duckdb | dbt on Snowflake/BQ |
 | Orchestration | **DAG**, Airflow | **Dagster** (asset graph + schedule) | Airflow/MWAA, Composer, **ADF** |
-| Ingestion / stream | batch, **CDC**, Kafka | Python + (phase 2) Redpanda/Debezium | Kinesis, Pub/Sub, Dataflow |
+| Ingestion / stream | batch, **CDC**, **Kafka** | Python + **Redpanda** + **Debezium** | Kinesis, Pub/Sub, Dataflow |
 | Warehouse / serving | **DWH**, **OLTP** | Postgres | Redshift, Synapse |
 | Data quality | **DQ**, GE, Soda, tests | dbt tests + a DQ audit | Great Expectations, Soda |
 | BI | dashboards, semantic layer | Metabase or Streamlit | Looker, Power BI |
@@ -69,6 +73,10 @@ python scripts/run_pipeline.py      # seeds -> ingest -> dbt build+test -> DQ au
 dagster dev -f orchestration/definitions.py   # orchestration UI (:3000)
 streamlit run dashboard/app.py                # dashboard on the gold marts
 docker compose --profile bi up -d             # Metabase BI (:3000), connect to Postgres
+
+# streaming + CDC (needs Docker):
+docker compose --profile stream up -d         # + Redpanda (Kafka) + Debezium (Connect)
+python scripts/smoke_stream_cdc.py            # produce/consume + capture CDC, end to end
 ```
 
 Endpoints: MinIO console `localhost:9001` (minioadmin/minioadmin), Postgres
@@ -91,9 +99,11 @@ pipeline/               config, ingest (-> bronze), storage (MinIO + DuckDB), DQ
 dbt/                    sources, staging (silver), marts (gold star schema), seeds, tests
 orchestration/          Dagster asset graph (ingest -> dbt -> DQ) + daily schedule
 dashboard/              Streamlit on the gold marts
-scripts/                fetch_seeds, run_pipeline
+streaming/              Kafka producer + consumer (-> bronze/stream)
+cdc/                    Postgres source, Debezium connector, change-capture demo
+scripts/                fetch_seeds, run_pipeline, smoke_stream_cdc
 tests/                  offline unit tests (settings + cleaning rules)
-.github/workflows/      CI: dbt deps + parse + pytest
+.github/workflows/      CI: validate (dbt parse + pytest) + integration (full Docker stack)
 ```
 
 ## What it demonstrates
@@ -104,9 +114,23 @@ data-quality contracts; orchestration as an asset DAG with a schedule;
 containerized infra; and CI. It is the platform side that complements an ML repo:
 this is what produces clean, tested, queryable datasets for downstream models.
 
-## Phase 2 (scaffolded, documented)
+## Streaming + CDC (built, verified in CI)
 
-Streaming ingest (Redpanda producer + consumer to a bronze stream table — compose
-profile `stream`); **CDC** from a Postgres OLTP source via Debezium; **SCD2**
-dimensions via dbt snapshots on the changing source; Iceberg/Delta table format
-for ACID/time-travel on the lake; Terraform (+ LocalStack) for the infra as code.
+Both run under the `stream` Compose profile and are exercised end-to-end by the CI
+`integration` job on a Linux + Docker runner. (The dev box's Docker Desktop was
+broken, so the cloud CI run is the proof.)
+
+- **Streaming**: a producer replays trips into **Redpanda** (Kafka API); a consumer
+  lands micro-batches into `bronze/stream`. Last run: 5,000 produced → 5,000
+  consumed.
+- **CDC**: **Debezium** captures inserts/updates/deletes on a Postgres `drivers`
+  table (with before/after images) to `cdc.public.drivers`. Last run: connector
+  registered (HTTP 201), 6 change events captured (snapshot + update + insert + delete).
+
+Run locally once Docker is available: `docker compose --profile stream up -d`,
+then `python scripts/smoke_stream_cdc.py` (or `make produce / consume / cdc`).
+
+## Phase 2 (next)
+
+**SCD2** dimensions via dbt snapshots on the CDC source; Iceberg/Delta table format
+for ACID/time-travel on the lake; Terraform (+ LocalStack) for infra as code.
