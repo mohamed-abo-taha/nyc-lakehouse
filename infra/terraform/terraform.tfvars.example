@@ -1,0 +1,6 @@
+# copy to terraform.tfvars and adjust
+region      = "us-east-1"
+s3_endpoint = "http://localhost:9000" # MinIO; LocalStack = http://localhost:4566
+access_key  = "minioadmin"
+secret_key  = "minioadmin"
+lake_bucket = "lake"

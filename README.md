@@ -33,7 +33,7 @@ NYC TLC Parquet ──ingest──► MinIO (S3)            DuckDB + dbt        
 | Warehouse / serving | **DWH**, **OLTP** | Postgres | Redshift, Synapse |
 | Data quality | **DQ**, GE, Soda, tests | dbt tests + a DQ audit | Great Expectations, Soda |
 | BI | dashboards, semantic layer | Metabase or Streamlit | Looker, Power BI |
-| Infra / deploy | **IaC**, Docker, **K8s**, **CI/CD** | Docker Compose + GitHub Actions | Terraform, EKS/GKE |
+| Infra / deploy | **IaC**, Docker, **K8s**, **CI/CD** | Docker Compose + **Terraform** + GitHub Actions | Terraform, EKS/GKE |
 | Formats | **Parquet**, Avro | Parquet | Parquet/ORC/Avro |
 
 ## Data
@@ -96,14 +96,16 @@ the same slot.
 ```
 docker-compose.yml      MinIO + Postgres (+ Metabase/Redpanda behind profiles)
 pipeline/               config, ingest (-> bronze), storage (MinIO + DuckDB), DQ audit
-dbt/                    sources, staging (silver), marts (gold star schema), seeds, tests
+dbt/                    sources, staging (silver), marts (gold star schema), seeds,
+                        snapshots (SCD2), tests
 orchestration/          Dagster asset graph (ingest -> dbt -> DQ) + daily schedule
 dashboard/              Streamlit on the gold marts
 streaming/              Kafka producer + consumer (-> bronze/stream)
 cdc/                    Postgres source, Debezium connector, change-capture demo
-scripts/                fetch_seeds, run_pipeline, smoke_stream_cdc
+infra/terraform/        S3 lake provisioning (infra as code)
+scripts/                fetch_seeds, run_pipeline, smoke_stream_cdc, scd2_demo, delta_demo
 tests/                  offline unit tests (settings + cleaning rules)
-.github/workflows/      CI: validate (dbt parse + pytest) + integration (full Docker stack)
+.github/workflows/      CI: validate + integration (Docker stack) + iac (terraform)
 ```
 
 ## What it demonstrates
@@ -130,7 +132,20 @@ broken, so the cloud CI run is the proof.)
 Run locally once Docker is available: `docker compose --profile stream up -d`,
 then `python scripts/smoke_stream_cdc.py` (or `make produce / consume / cdc`).
 
-## Phase 2 (next)
+## Advanced features (built)
 
-**SCD2** dimensions via dbt snapshots on the CDC source; Iceberg/Delta table format
-for ACID/time-travel on the lake; Terraform (+ LocalStack) for infra as code.
+- **SCD2 history** — a dbt snapshot (`dbt/snapshots/drivers_snapshot.sql`) keeps
+  Type-2 history of a changing dimension: each change closes the old row
+  (`dbt_valid_to`) and opens a new one. Demo: `python scripts/scd2_demo.py`
+  (driver 1 ends up with two versions, one closed, one current).
+- **Delta Lake table format** — ACID writes + time travel via delta-rs (no Spark):
+  an append creates a new version while the previous one stays readable, and DuckDB
+  reads the Delta table directly. Demo: `python scripts/delta_demo.py`.
+- **Infrastructure as code** — Terraform (`infra/terraform/`) provisions the lake
+  bucket (versioning enabled) against MinIO / LocalStack / AWS via an endpoint
+  override; `terraform validate` runs in CI.
+
+## Further ideas
+
+Iceberg catalog + partition evolution; load gold into Postgres for Metabase;
+alerting on data-quality failures; backfill + late-arriving-data handling.

@@ -12,9 +12,16 @@ __pycache__/
 # data + warehouse (regenerated from source)
 data/landing/*
 data/warehouse/*
+data/delta/
 !**/.gitkeep
 *.duckdb
 *.duckdb.wal
+
+# terraform
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
 
 # dbt
 dbt/target/

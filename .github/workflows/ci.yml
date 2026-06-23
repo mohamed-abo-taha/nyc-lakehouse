@@ -44,3 +44,15 @@ jobs:
       - name: Service logs (on failure)
         if: failure()
         run: docker compose logs --tail=120
+
+  # Validate the Terraform infra-as-code that provisions the lake bucket.
+  iac:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: terraform init + validate
+        working-directory: infra/terraform
+        run: |
+          terraform init -backend=false
+          terraform validate

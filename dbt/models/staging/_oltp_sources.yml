@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: raw_oltp
+    schema: raw_oltp
+    description: "Operational drivers table (stand-in for the CDC source) for the SCD2 snapshot."
+    tables:
+      - name: drivers
